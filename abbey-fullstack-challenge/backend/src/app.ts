@@ -1,0 +1,26 @@
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import authRoutes from './routes/authRoutes';
+import accountRoutes from './routes/accountRoutes';
+import userRoutes from './routes/userRoutes';
+import relationshipRoutes from './routes/relationshipRoutes';
+import { requireAuth } from './middleware/auth';
+import { publicUser } from './services/authService';
+import { store } from './store/memoryStore';
+
+store.seed();
+export const app = express();
+app.use(helmet());
+app.use(cors({ origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173', credentials: true }));
+app.use(express.json()); app.use(cookieParser());
+app.get('/api/health', (_req,res) => res.json({ status:'ok', service:'abbey-challenge-api' }));
+app.use('/api/auth', authRoutes);
+app.get('/api/me', requireAuth, (req,res) => res.json({ user: publicUser(store.findUserById(req.userId!)!) }));
+app.use('/api/me', accountRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/relationships', relationshipRoutes);
+app.use((_req,res) => res.status(404).json({ message:'Route not found' }));
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => { console.error(err); res.status(500).json({ message:'Internal server error' }); });
